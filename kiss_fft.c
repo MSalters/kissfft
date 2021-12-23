@@ -13,19 +13,17 @@
  */
 
 static inline void kf_bfly2(
-        kiss_fft_cpx * Fout,
+        kiss_fft_cpx * Fout
         /* Unused in this butterfly: fstride */
-        const kiss_fft_cfg st
+        /* Twiddle factor is always 1+0i*/
         /* Implied by factoring: m==1*/
         )
 {
-    kiss_fft_cpx * Fout2;
-    kiss_fft_cpx * tw1 = st->twiddles;
-    kiss_fft_cpx t;
-    Fout2 = Fout + 1;
+    kiss_fft_cpx* Fout2 = Fout + 1;
+    kiss_fft_cpx t = *Fout2;
+
     C_FIXDIV(*Fout,2); C_FIXDIV(*Fout2,2);
 
-    C_MUL (t,  *Fout2 , *tw1);
     C_SUB( *Fout2 ,  *Fout , t );
     C_ADDTO( *Fout ,  t );
 }
@@ -285,7 +283,7 @@ void kf_work(
 
     // recombine the p smaller DFTs
     switch (p) {
-        case 2: kf_bfly2(Fout,st); break;
+        case 2: kf_bfly2(Fout); break;
         case 3: kf_bfly3(Fout,fstride,st,m); break;
         case 4: kf_bfly4(Fout,fstride,st,m); break;
         case 5: kf_bfly5(Fout,fstride,st,m); break;
