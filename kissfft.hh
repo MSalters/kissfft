@@ -32,23 +32,28 @@ class kissfft
                 _twiddles[i] = std::exp( cpx_t(0,i*phinc) );
 
             //factorize
-            //start factoring out 4's, then 2's, then 3,5,7,9,...
+            //start factoring out 4's, then 3,5,7,9,..., then 2
             std::size_t n= _nfft;
-            std::size_t p=4;
+            while (n % 4 == 0) {
+                n /= 4;
+                _stageRadix.push_back(4);
+                _stageRemainder.push_back(n);
+            };
+            std::size_t p=3;
             do {
                 while (n % p) {
-                    switch (p) {
-                        case 4: p = 2; break;
-                        case 2: p = 3; break;
-                        default: p += 2; break;
-                    }
+                    p += 2;
                     if (p*p>n)
-                        p = n;// no more factors
+                        p = (n%2) ? n : n/2; // no more factors
                 }
                 n /= p;
                 _stageRadix.push_back(p);
                 _stageRemainder.push_back(n);
-            }while(n>1);
+            }while(n>2);
+            if (n == 2) {
+                _stageRadix.push_back(2);
+                _stageRemainder.push_back(1);
+            }
         }
 
 
@@ -114,7 +119,7 @@ class kissfft
 
             // recombine the p smaller DFTs
             switch (p) {
-                case 2: kf_bfly2(fft_out,fstride,m); break;
+                case 2: kf_bfly2(fft_out); break;
                 case 3: kf_bfly3(fft_out,fstride,m); break;
                 case 4: kf_bfly4(fft_out,fstride,m); break;
                 case 5: kf_bfly5(fft_out,fstride,m); break;
@@ -190,13 +195,11 @@ class kissfft
 
     private:
 
-        void kf_bfly2( cpx_t * Fout, const size_t fstride, const std::size_t m) const
+        void kf_bfly2(cpx_t * Fout) const
         {
-            for (std::size_t k=0;k<m;++k) {
-                const cpx_t t = Fout[m+k] * _twiddles[k*fstride];
-                Fout[m+k] = Fout[k] - t;
-                Fout[k] += t;
-            }
+            const cpx_t t = Fout[1];
+            Fout[1] = Fout[0] - t;
+            Fout[0] += t;
         }
 
         void kf_bfly3( cpx_t * Fout, const std::size_t fstride, const std::size_t m) const
@@ -232,7 +235,7 @@ class kissfft
 
         void kf_bfly4( cpx_t * const Fout, const std::size_t fstride, const std::size_t m) const
         {
-            cpx_t scratch[7];
+            cpx_t scratch[6];
             const scalar_t negative_if_inverse = _inverse ? -1 : +1;
             for (std::size_t k=0;k<m;++k) {
                 scratch[0] = Fout[k+  m] * _twiddles[k*fstride  ];
