@@ -9,6 +9,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <typeinfo>
+#include <string>
 
 #include <sys/time.h>
 static inline
@@ -66,6 +67,11 @@ void dotest(int nfft)
 
 int main(int argc,char ** argv)
 {
+    if (argv[1] && std::string(argv[1])=="all") {
+        for (int nfft = 2; nfft < 32767; ++nfft) {
+            dotest<float>(nfft);
+        }
+    }
     if (argc>1) {
         for (int k=1;k<argc;++k) {
             int nfft = atoi(argv[k]);
