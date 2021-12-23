@@ -92,7 +92,8 @@ class kissfft
         /// constructor. Hence when applying the same transform twice, but with
         /// the inverse flag changed the second time, then the result will
         /// be equal to the original input times @c N.
-        void transform(const cpx_t * fft_in, cpx_t * fft_out, const std::size_t stage = 0, const std::size_t fstride = 1, const std::size_t in_stride = 1) const
+        template<size_t in_stride = 1>
+        void transform(const cpx_t * fft_in, cpx_t * fft_out, const std::size_t stage = 0, const std::size_t fstride = 1) const
         {
             const std::size_t p = _stageRadix[stage];
             const std::size_t m = _stageRemainder[stage];
@@ -110,7 +111,7 @@ class kissfft
                     // DFT of size m*p performed by doing
                     // p instances of smaller DFTs of size m,
                     // each one takes a decimated version of the input
-                    transform(fft_in, fft_out, stage+1, fstride*p,in_stride);
+                    transform<in_stride>(fft_in, fft_out, stage+1, fstride*p);
                     fft_in += fstride*in_stride;
                 }while( (fft_out += m) != Fout_end );
             }
@@ -124,6 +125,42 @@ class kissfft
                 case 4: kf_bfly4(fft_out,fstride,m); break;
                 case 5: kf_bfly5(fft_out,fstride,m); break;
                 default: kf_bfly_generic(fft_out,fstride,m,p); break;
+            }
+        }
+        //  Overload that allows runtime in_stride selection.
+        void transform(const cpx_t* fft_in, cpx_t* fft_out, const std::size_t stage, const std::size_t fstride, const std::size_t in_stride) const
+        {
+            const std::size_t p = _stageRadix[stage];
+            const std::size_t m = _stageRemainder[stage];
+            cpx_t* const Fout_beg = fft_out;
+            cpx_t* const Fout_end = fft_out + p * m;
+
+            if (m == 1) {
+                do {
+                    *fft_out = *fft_in;
+                    fft_in += fstride * in_stride;
+                } while (++fft_out != Fout_end);
+            }
+            else {
+                do {
+                    // recursive call:
+                    // DFT of size m*p performed by doing
+                    // p instances of smaller DFTs of size m,
+                    // each one takes a decimated version of the input
+                    transform(fft_in, fft_out, stage + 1, fstride * p, in_stride);
+                    fft_in += fstride * in_stride;
+                } while ((fft_out += m) != Fout_end);
+            }
+
+            fft_out = Fout_beg;
+
+            // recombine the p smaller DFTs
+            switch (p) {
+            case 2: kf_bfly2(fft_out); break;
+            case 3: kf_bfly3(fft_out, fstride, m); break;
+            case 4: kf_bfly4(fft_out, fstride, m); break;
+            case 5: kf_bfly5(fft_out, fstride, m); break;
+            default: kf_bfly_generic(fft_out, fstride, m, p); break;
             }
         }
 
