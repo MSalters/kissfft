@@ -161,27 +161,9 @@ it runs on. This testsuite is useful for reporting bugs or testing the pull requ
 
 ## BACKGROUND
 
-I started coding this because I couldn't find a fixed point FFT that didn't 
-use assembly code.  I started with floating point numbers so I could get the 
-theory straight before working on fixed point issues.  In the end, I had a 
-little bit of code that could be recompiled easily to do ffts with short, float
-or double (other types should be easy too).  
+Forked from the original by Mark Borgerding. Rationale at
+https://stackoverflow.com/questions/69541171/in-kiss-fft-why-does-kf-bfly2-take-an-array-as-argument-the-argument-seems-to/69572815#69572815
 
-Once I got my FFT working, I was curious about the speed compared to
-a well respected and highly optimized fft library.  I don't want to criticize 
-this great library, so let's call it FFT_BRANDX.
-During this process, I learned:
-
-> 1. FFT_BRANDX has more than 100K lines of code. The core of kiss_fft is about 500 lines (cpx 1-d).
-> 2. It took me an embarrassingly long time to get FFT_BRANDX working.
-> 3. A simple program using FFT_BRANDX is 522KB. A similar program using kiss_fft is 18KB (without optimizing for size).
-> 4. FFT_BRANDX is roughly twice as fast as KISS FFT in default mode.
-
-It is wonderful that free, highly optimized libraries like FFT_BRANDX exist.
-But such libraries carry a huge burden of complexity necessary to extract every 
-last bit of performance.
-
-**Sometimes simpler is better, even if it's not better.**
 
 ## FREQUENTLY ASKED QUESTIONS:
 > Q: Can I use kissfft in a project with a ___ license?</br>
@@ -219,7 +201,8 @@ No static data is used.  The core routines of kiss_fft are thread-safe (but not 
 No scaling is done for the floating point version (for speed).  
 Scaling is done both ways for the fixed-point version (for overflow prevention).
 
-Optimized butterflies are used for factors 2,3,4, and 5. 
+Optimized butterflies are used for factors 4, 3, 5 and 2. At most one butterfly of factor 2 is done, and
+when it's used it's the last one.
 
 The real (i.e. not complex) optimization code only works for even length ffts.  It does two half-length
 FFTs in parallel (packed into real&imag), and then combines them via twiddling.  The result is 
@@ -240,6 +223,9 @@ modified to put the scrap at the tail.
  - Make doc describing the overlap (tail) scrap fast convolution filtering in kiss_fastfir.c
  - Test all the ./tools/ code with fixed point (kiss_fastfir.c doesn't work, maybe others)
 
-## AUTHOR
+## AUTHORS
     Mark Borgerding
     Mark@Borgerding.net
+
+    Michiel Salters
+    Michiel.Salters@SoundIntel.com
