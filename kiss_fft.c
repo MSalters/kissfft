@@ -12,27 +12,22 @@
  fixed or floating point complex numbers.  It also delares the kf_ internal functions.
  */
 
-static void kf_bfly2(
+static inline void kf_bfly2(
         kiss_fft_cpx * Fout,
-        const size_t fstride,
-        const kiss_fft_cfg st,
-        int m
+        /* Unused in this butterfly: fstride */
+        const kiss_fft_cfg st
+        /* Implied by factoring: m==1*/
         )
 {
     kiss_fft_cpx * Fout2;
     kiss_fft_cpx * tw1 = st->twiddles;
     kiss_fft_cpx t;
-    Fout2 = Fout + m;
-    do{
-        C_FIXDIV(*Fout,2); C_FIXDIV(*Fout2,2);
+    Fout2 = Fout + 1;
+    C_FIXDIV(*Fout,2); C_FIXDIV(*Fout2,2);
 
-        C_MUL (t,  *Fout2 , *tw1);
-        tw1 += fstride;
-        C_SUB( *Fout2 ,  *Fout , t );
-        C_ADDTO( *Fout ,  t );
-        ++Fout2;
-        ++Fout;
-    }while (--m);
+    C_MUL (t,  *Fout2 , *tw1);
+    C_SUB( *Fout2 ,  *Fout , t );
+    C_ADDTO( *Fout ,  t );
 }
 
 static void kf_bfly4(
@@ -261,7 +256,7 @@ void kf_work(
         // all threads have joined by this point
 
         switch (p) {
-            case 2: kf_bfly2(Fout,fstride,st,m); break;
+            case 2: kf_bfly2(Fout,st); break;
             case 3: kf_bfly3(Fout,fstride,st,m); break;
             case 4: kf_bfly4(Fout,fstride,st,m); break;
             case 5: kf_bfly5(Fout,fstride,st,m); break;
@@ -270,7 +265,6 @@ void kf_work(
         return;
     }
 #endif
-
     if (m==1) {
         do{
             *Fout = *f;
@@ -291,7 +285,7 @@ void kf_work(
 
     // recombine the p smaller DFTs
     switch (p) {
-        case 2: kf_bfly2(Fout,fstride,st,m); break;
+        case 2: kf_bfly2(Fout,st); break;
         case 3: kf_bfly3(Fout,fstride,st,m); break;
         case 4: kf_bfly4(Fout,fstride,st,m); break;
         case 5: kf_bfly5(Fout,fstride,st,m); break;
@@ -306,25 +300,30 @@ void kf_work(
 static
 void kf_factor(int n,int * facbuf)
 {
-    int p=4;
-    double floor_sqrt;
-    floor_sqrt = floor( sqrt((double)n) );
-
-    /*factor out powers of 4, powers of 2, then any remaining primes */
-    do {
+    /*factor out powers of 4, odd primes, and possibly a final power of 2 */
+    while (n % 4 == 0)
+    {
+        n /= 4;
+        *facbuf++ = 4;
+        *facbuf++ = n;
+    }
+    int p = 3;
+    while (n>2) {
         while (n % p) {
-            switch (p) {
-                case 4: p = 2; break;
-                case 2: p = 3; break;
-                default: p += 2; break;
+            p += 2;
+            /* Shortcut for large p. No overflow; unsigned has an extra bit*/
+            if (((unsigned)p * p) > (unsigned)n) {
+                p = (n % 2) ? n : n / 2; /* n is prime or even */
             }
-            if (p > floor_sqrt)
-                p = n;          /* no more factors, skip to end */
         }
         n /= p;
         *facbuf++ = p;
         *facbuf++ = n;
-    } while (n > 1);
+    };
+    if (n == 2) {
+        *facbuf++ = 2; /* factor p=2 is always followed by m=1 */
+        *facbuf++ = 1;
+    }
 }
 
 /*
