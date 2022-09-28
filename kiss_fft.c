@@ -249,7 +249,7 @@ void kf_work(
         // all threads have joined by this point
 
         switch (p) {
-            case 2: kf_bfly2(Fout,st); break;
+            case 2: kf_bfly2(Fout); break;
             case 3: kf_bfly3(Fout,fstride,st,m); break;
             case 4: kf_bfly4(Fout,fstride,st,m); break;
             case 5: kf_bfly5(Fout,fstride,st,m); break;
